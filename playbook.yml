@@ -1,0 +1,6 @@
+---
+- name: Ansible playbook for configuring a new Raspberry Pi system
+  hosts: raspberrypis
+  roles:
+    - raspbian
+  become: yes

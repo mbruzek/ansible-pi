@@ -1,0 +1,57 @@
+---
+- set_fact:
+    real_ansible_host: "{{ ansible_host }}"
+
+- name: Retrieve current wifi settings
+  fetch:
+    src: /etc/wpa_supplicant/wpa_supplicant.conf
+    dest: wifi
+
+- name: Render a new wifi template
+  template:
+    src=roles/raspbian/templates/wpa_supplicant.conf.j2
+    dest=/etc/wpa_supplicant/wpa_supplicant.conf
+    mode=0600
+    force=no
+  when: ( primary_wifi_ssid is defined ) and ( primary_wifi_password is defined )
+
+- name: Copying the public ssh key from Ansible host to managed host
+  authorized_key:
+    user: pi
+    state: present
+    key: "{{ item }}"
+  with_file:
+    - "~/.ssh/id_rsa.pub"
+
+- name: Change the password to something non default
+  user:
+    name: pi
+    update_password: always
+    password: "{{ non_default_password | password_hash('sha512') }}"
+  when: non_default_password is defined
+
+- name: Update package manager cache
+  apt:
+    update_cache: yes
+
+- name: Upgrade packages
+  apt:
+    upgrade: yes
+
+- name: Restart the system
+  shell: sleep 2 && shutdown -r now "Ansible requested system reboot"
+  async: 1
+  poll: 0
+  ignore_errors: true
+
+- name: Wait for system to boot
+  become: false
+  vars:
+    ansible_connection: local
+  local_action: wait_for
+  args:
+    host: "{{ real_ansible_host }}"
+    port: 22
+    state: started
+    delay: 15
+    timeout: 300
