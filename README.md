@@ -19,3 +19,5 @@ Run the `playbook.yml` with the `ansible-playbook` command:
 cd ansible-pi
 ansible-playbook playbook.yml
 ```
+For more information on what tasks are performed, read the 
+[role tasks](roles/raspbian/tasks/main.yml)
