@@ -64,7 +64,7 @@
     - update-locale LANG='{{ full_locale }}'
     - rm /tmp/locales
 
-### Change the password to new_password from the vault file.
+### Change the password to new_pi_password from the vault file.
 - name: Change the password to something else
   user:
     name: pi

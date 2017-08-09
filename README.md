@@ -12,11 +12,12 @@ git clone https://github.com/mbruzek/ansible-pi.git
 cd ansible-pi
 ```
 3. Edit the `inventory` file to contain the IP addresses or hostnames
-of the Raspberry Pi systems in the group "raspberrypis".
+of the Raspberry Pi hosts in the group "raspberrypis".
 
 4. Create an Ansible vault file for the sensitive variables used in the tasks:
-`wifi_ssid`, `wifi_password`, and `new_password` with the appropriate values.
-Then create a plain text file with the password used to create the vault.
+`wifi_ssid`, `wifi_password`, and `new_pi_password` with the appropriate
+values. Then create a plain text file with the password used to create the
+vault.
 ```sh
 ansible-vault create roles/raspbian/vars/vault.yml  # You will be prompted for a vault password.
 vi password-file.txt                                # Put the vault password in this file.
@@ -30,6 +31,9 @@ ansible-playbook playbook.yml --vault-password-file password-file.txt
 ```
 
 # Playbook overview:
+This section outlines the tasks for the "raspbian" role of the playbook. For
+more information on what tasks are performed, read the raspbian
+[role tasks](roles/raspbian/tasks/main.yml).
 
 ### Read in the variables from the vault file and do not log the values!
 
@@ -47,7 +51,7 @@ ansible-playbook playbook.yml --vault-password-file password-file.txt
 
 ### Set selections, remove generated, reconfigure and update locale.
 
-### Change the password to new_password from the vault file.
+### Change the password to new_pi_password from the vault file.
 
 ### Update the package manager.
 
@@ -62,7 +66,3 @@ ansible-playbook playbook.yml --vault-password-file password-file.txt
 ### Reboot the the managed host.
 
 ### Wait for the managed host to return.
-
-
-For more information on what tasks are performed, read the raspbian
-[role tasks](roles/raspbian/tasks/main.yml).
