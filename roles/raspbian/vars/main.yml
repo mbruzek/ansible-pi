@@ -1,4 +1,6 @@
 ---
 ansible_connection: ssh
-ansible_ssh_user: pi
+ansible_user: pi
 ansible_ssh_pass: raspberry
+country: us
+timezone: America/Chicago
