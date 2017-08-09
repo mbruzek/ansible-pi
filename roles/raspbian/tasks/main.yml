@@ -1,21 +1,30 @@
 ---
 - set_fact:
     real_ansible_host: "{{ ansible_host }}"
+    full_locale: "{{ lookup('env', 'LANG') }}"
 
-- name: Retrieve current wifi settings
-  fetch:
-    src: /etc/wpa_supplicant/wpa_supplicant.conf
-    dest: wifi
+- name: Include the variables from the secret file
+  include_vars:
+    file: secrets.yml
+  no_log: true
 
+# Determine if the system has a wireless adapter.
+- name: Check for wireless adapter
+  command: ifconfig wlan0
+  register: wireless
+  ignore_errors: true
+
+# Render the wifi template for systems with wireless adapters.
 - name: Render a new wifi template
   template:
-    src=roles/raspbian/templates/wpa_supplicant.conf.j2
-    dest=/etc/wpa_supplicant/wpa_supplicant.conf
-    mode=0600
-    force=no
-  when: ( primary_wifi_ssid is defined ) and ( primary_wifi_password is defined )
+    src: wpa_supplicant.conf.j2
+    dest: /etc/wpa_supplicant/wpa_supplicant.conf
+    mode: '0600'
+    backup: yes
+  when: ( wireless.rc == 0 ) and ( wifi_ssid is defined ) and ( wifi_password is defined )
 
-- name: Copying the public ssh key from Ansible host to managed host
+# Copy the ssh key to the managed host.
+- name: Copy the public ssh key from the Ansible host to the managed host
   authorized_key:
     user: pi
     state: present
@@ -23,27 +32,76 @@
   with_file:
     - "~/.ssh/id_rsa.pub"
 
-- name: Change the password to something non default
+# Set the timezone.
+- name: Change the timezone
+  copy:
+    content: "{{ timezone }}"
+    dest: /etc/timezone'
+    force: yes
+
+# Set the keyboard layout.
+- name: Change the keyboard layout
+  replace:
+    path: /etc/default/keyboard
+    regexp: 'XKBLAYOUT=.+'
+    replace: 'XKBLAYOUT="{{ country }}"'
+    backup: yes
+
+# Set the local file so the next task can read it.
+- name: Render the locale file
+  template:
+    src: locales.j2
+    dest: /tmp/locales
+
+# Set selections, remove generated, reconfigure and update locale.
+- name: Change the locale
+  command: "{{ item }}"
+  with_items:
+    - debconf-set-selections /tmp/locales
+    - rm /etc/locale.gen
+    - dpkg-reconfigure -f noninteractive locales
+    - update-locale LANG='{{ full_locale }}'
+    - rm /tmp/locales
+
+# Change the password to something other than "raspberry".
+- name: Change the password to something else
   user:
     name: pi
-    update_password: always
-    password: "{{ non_default_password | password_hash('sha512') }}"
-  when: non_default_password is defined
+    password: "{{ new_password | password_hash('sha512') }}"
+  when: new_password is defined
 
+# Update the package manager.
 - name: Update package manager cache
   apt:
     update_cache: yes
 
-- name: Upgrade packages
+# Update the packages to the latest version.
+- name: Upgrade packages to the latest version
   apt:
     upgrade: yes
 
+# Remove the unnecessary packages.
+- name: Remove dependencies that are no longer required
+  apt:
+    autoremove: yes
+
+# Remove the downloaded packages.
+- name: Remove useless packages from the cache
+  apt:
+    autoclean: yes
+
+# Update the Raspberry Pi firmware, this may require a reboot.
+- name: Update the Raspberry Pi firmware
+  command: rpi-update
+
+# Reboot the the managed host.
 - name: Restart the system
   shell: sleep 2 && shutdown -r now "Ansible requested system reboot"
   async: 1
   poll: 0
   ignore_errors: true
 
+# Wait for the managed host to return.
 - name: Wait for system to boot
   become: false
   vars:
