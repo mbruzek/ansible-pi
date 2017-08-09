@@ -3,18 +3,19 @@
     real_ansible_host: "{{ ansible_host }}"
     full_locale: "{{ lookup('env', 'LANG') }}"
 
-- name: Include the variables from the secret file
+### Read in the variables from the vault file and do not log the values!
+- name: Include the variables from the vault file
   include_vars:
-    file: secrets.yml
+    file: vault.yml
   no_log: true
 
-# Determine if the system has a wireless adapter.
+### Determine if the system has a wireless adapter.
 - name: Check for wireless adapter
   command: ifconfig wlan0
   register: wireless
   ignore_errors: true
 
-# Render the wifi template for systems with wireless adapters.
+### Render the wifi template only for systems with wireless adapters and wifi variables.
 - name: Render a new wifi template
   template:
     src: wpa_supplicant.conf.j2
@@ -23,7 +24,7 @@
     backup: yes
   when: ( wireless.rc == 0 ) and ( wifi_ssid is defined ) and ( wifi_password is defined )
 
-# Copy the ssh key to the managed host.
+### Copy the local ssh key to the managed host.
 - name: Copy the public ssh key from the Ansible host to the managed host
   authorized_key:
     user: pi
@@ -32,14 +33,14 @@
   with_file:
     - "~/.ssh/id_rsa.pub"
 
-# Set the timezone.
+### Set the timezone.
 - name: Change the timezone
   copy:
     content: "{{ timezone }}"
     dest: /etc/timezone'
     force: yes
 
-# Set the keyboard layout.
+### Set the keyboard layout.
 - name: Change the keyboard layout
   replace:
     path: /etc/default/keyboard
@@ -47,13 +48,13 @@
     replace: 'XKBLAYOUT="{{ country }}"'
     backup: yes
 
-# Set the local file so the next task can read it.
+### Render a locale file with the LANG env variable from local host so the next task can read it.
 - name: Render the locale file
   template:
     src: locales.j2
     dest: /tmp/locales
 
-# Set selections, remove generated, reconfigure and update locale.
+### Set selections, remove generated, reconfigure and update locale.
 - name: Change the locale
   command: "{{ item }}"
   with_items:
@@ -63,45 +64,46 @@
     - update-locale LANG='{{ full_locale }}'
     - rm /tmp/locales
 
-# Change the password to something other than "raspberry".
+### Change the password to new_password from the vault file.
 - name: Change the password to something else
   user:
     name: pi
-    password: "{{ new_password | password_hash('sha512') }}"
-  when: new_password is defined
+    password: "{{ new_pi_password | password_hash('sha512') }}"
+  when: new_pi_password is defined
 
-# Update the package manager.
+### Update the package manager.
 - name: Update package manager cache
   apt:
     update_cache: yes
 
-# Update the packages to the latest version.
+### Update the packages to the latest version.
 - name: Upgrade packages to the latest version
   apt:
     upgrade: yes
 
-# Remove the unnecessary packages.
+### Remove the unnecessary packages.
 - name: Remove dependencies that are no longer required
   apt:
     autoremove: yes
 
-# Remove the downloaded packages.
+### Remove the downloaded packages.
 - name: Remove useless packages from the cache
   apt:
     autoclean: yes
 
-# Update the Raspberry Pi firmware, this may require a reboot.
+### Update the Raspberry Pi firmware, this may require a reboot.
 - name: Update the Raspberry Pi firmware
   command: rpi-update
+  ignore_errors: true
 
-# Reboot the the managed host.
+### Reboot the the managed host.
 - name: Restart the system
   shell: sleep 2 && shutdown -r now "Ansible requested system reboot"
   async: 1
   poll: 0
   ignore_errors: true
 
-# Wait for the managed host to return.
+### Wait for the managed host to return.
 - name: Wait for system to boot
   become: false
   vars:
