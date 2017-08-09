@@ -20,15 +20,15 @@ values. Then create a plain text file with the password used to create the
 vault.
 ```sh
 ansible-vault create roles/raspbian/vars/vault.yml  # You will be prompted for a vault password.
-vi password-file.txt                                # Put the vault password in this file.
 ```
 
 # Usage
-Run the `playbook.yml` with the `ansible-playbook` command and the
-`--vault-password-file` flag:
+Run the `playbook.yml` with the `ansible-playbook` command, using the
+`--ask-vault-pass` flag:
 ```sh
-ansible-playbook playbook.yml --vault-password-file password-file.txt
+ansible-playbook playbook.yml --ask-vault-pass
 ```
+Enter the vault password when prompted by this command.
 
 # Playbook overview:
 This section outlines the tasks for the "raspbian" role of the playbook. For
@@ -47,7 +47,7 @@ more information on what tasks are performed, read the raspbian
 
 ### Set the keyboard layout.
 
-### Render a locale file with the LANG env variable from local host so the next task can read it.
+### Render a locale file with the LANG env variable from localhost for the next task.
 
 ### Set selections, remove generated, reconfigure and update locale.
 

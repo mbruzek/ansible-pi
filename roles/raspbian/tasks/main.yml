@@ -48,7 +48,7 @@
     replace: 'XKBLAYOUT="{{ country }}"'
     backup: yes
 
-### Render a locale file with the LANG env variable from local host so the next task can read it.
+### Render a locale file with the LANG env variable from localhost for the next task.
 - name: Render the locale file
   template:
     src: locales.j2
